@@ -166,6 +166,33 @@ body.st-sleep #sleepOverlay { display: grid; }
   opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 90vw;
 }
 .toast.show { opacity: 1; }
+
+/* ===== 아바타 ===== */
+#avatarCam { display: none; transform: none !important; object-fit: contain !important; background: radial-gradient(circle at 50% 40%, #26306a, #0b1024); }
+#monitor.avatar-view video, #monitor.avatar-view #overlay { visibility: hidden; }
+#monitor.avatar-view #avatarCam { display: block; }
+
+/* ===== 스터디룸 ===== */
+.profile { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.profile canvas { width: 130px; height: 130px; border-radius: 50%; }
+.profile label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.swatch { width: 38px; height: 38px; border-radius: 50%; padding: 0; border: 3px solid transparent; }
+.swatch.on { border-color: var(--accent); }
+.code { font-size: 22px; letter-spacing: 3px; color: var(--accent); }
+.members { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+.member { background: var(--panel-2); border: 2px solid transparent; border-radius: 14px; padding: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.member canvas { width: 110px; height: 110px; }
+.member .mname { font-weight: 800; }
+.member .mstate { font-size: 13px; font-weight: 700; }
+.member .mtime { font-size: 12px; color: var(--muted); }
+.member button { margin-top: 4px; padding: 6px 12px; font-size: 13px; }
+.member.me { border-color: var(--line); }
+.member.st-sleep { border-color: var(--sleep); animation: pulseCard 1s infinite alternate; }
+.member.st-danger { border-color: var(--danger); }
+.member.st-caution { border-color: var(--caution); }
+@keyframes pulseCard { from { box-shadow: 0 0 0 0 rgba(255,77,87,.6); } to { box-shadow: 0 0 0 10px rgba(255,77,87,0); } }
+body.poked { animation: poked .25s 6 alternate; }
+@keyframes poked { from { box-shadow: inset 0 0 0 14px var(--calib); } to { box-shadow: none; } }
 </style>
 </head>
 <body>
@@ -182,6 +209,7 @@ body.st-sleep #sleepOverlay { display: grid; }
         <div class="cam">
           <video id="video" playsinline muted></video>
           <canvas id="overlay"></canvas>
+          <canvas id="avatarCam" width="400" height="400"></canvas>
           <div class="placeholder" id="camPlaceholder"><div>카메라가 꺼져 있어요.<br />아래 <b>시작하기</b>를 눌러 주세요.</div></div>
           <div class="calib" id="calibBox"><div><div class="count" id="calibCount">10</div><div id="calibMsg">정면을 보고 눈을 편하게 떠 주세요</div></div></div>
         </div>
@@ -209,6 +237,7 @@ body.st-sleep #sleepOverlay { display: grid; }
         <button id="stopBtn" disabled>정지</button>
         <button id="recalBtn" disabled>다시 보정</button>
         <button id="pipBtn" disabled>미니창 띄우기</button>
+        <button id="viewBtn">아바타로 보기</button>
       </div>
       <p class="muted" id="pipHint" style="margin:10px 0 0">미니창을 띄우면 이 창을 내리고 다른 작업을 해도 계속 감지해요.</p>
     </div>
@@ -252,11 +281,40 @@ body.st-sleep #sleepOverlay { display: grid; }
 
     <div class="card">
       <div class="tabs">
-        <button class="on" data-tab="tabLecture">인강 모드</button>
+        <button class="on" data-tab="tabRoom">스터디룸</button>
+        <button data-tab="tabLecture">인강 모드</button>
         <button data-tab="tabReport">졸음 리포트</button>
       </div>
 
-      <div class="tab on" id="tabLecture">
+      <div class="tab on" id="tabRoom">
+        <div id="roomLobby">
+          <p class="muted" id="roomModeMsg" style="margin:0 0 12px"></p>
+          <div class="profile">
+            <canvas id="avatarPreview" width="260" height="260"></canvas>
+            <div class="stack" style="gap:10px;flex:1;min-width:200px">
+              <label>닉네임<input type="text" id="nickname" maxlength="12" placeholder="친구들에게 보일 이름" /></label>
+              <div class="row" id="lookPicker"></div>
+              <label class="row" style="flex-direction:row;align-items:center"><input type="checkbox" id="glasses" /> 안경 쓰기</label>
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px">
+            <button class="primary" id="createRoom">방 만들기</button>
+            <input type="text" id="roomCode" maxlength="6" placeholder="방 코드 6자리" style="max-width:170px;min-width:120px;text-transform:uppercase" />
+            <button id="joinRoom">입장</button>
+          </div>
+          <p class="muted" style="margin:12px 0 0">영상은 친구에게 보내지 않아요. 상태와 표정 값만 공유되고, 친구 화면에는 내 아바타가 보여요.</p>
+        </div>
+        <div id="roomView" hidden>
+          <div class="row" style="justify-content:space-between">
+            <div><span class="muted">방 코드</span> <b class="code" id="roomCodeText"></b></div>
+            <div class="row"><button id="copyLink">초대 링크 복사</button><button id="leaveRoom">나가기</button></div>
+          </div>
+          <p class="muted" id="roomHint" style="margin:8px 0 0">왼쪽에서 감지를 시작하면 친구들에게 내 상태가 보여요.</p>
+          <div class="members" id="members"></div>
+        </div>
+      </div>
+
+      <div class="tab" id="tabLecture">
         <div class="row">
           <input type="text" id="ytUrl" placeholder="유튜브 강의 링크를 붙여 넣으세요 (선택)" />
           <button id="ytLoad">불러오기</button>
@@ -312,6 +370,20 @@ const MP_VER = "1.2.0";
 const MP_CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
 const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const DETECT_INTERVAL_MS = 66; // 약 15fps
+
+// ▼ 스터디룸 서버 설정: Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)의 firebaseConfig 값을 붙여 넣으세요.
+//   null이면 같은 브라우저 탭끼리만 연결되는 체험 모드로 동작합니다.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB40S47P7bhkPkC81LzYZuhy4ufTSHzsos",
+  authDomain: "gubuk-23277.firebaseapp.com",
+  databaseURL: "https://gubuk-23277-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "gubuk-23277",
+  storageBucket: "gubuk-23277.firebasestorage.app",
+  messagingSenderId: "745790091765",
+  appId: "1:745790091765:web:2aa673514a8a785937f0bc"
+};
+const FB_VER = "10.14.1";
+const ROOM_MAX = 8;
 
 /* ---------- 저장소 (localStorage는 실패할 수 있으므로 감싸서 사용) ---------- */
 const store = {
@@ -387,7 +459,9 @@ class DrowsyEngine {
       this.lossContext = null;
 
       // 1) 눈 감김 + 지속 시간
-      closed = f.blink >= this.cal.closeThr;
+      // 책·키보드를 내려다보면 눈꺼풀이 내려가 감김으로 오인되므로, 시선이 아래일수록 기준값을 최대 0.15 올림
+      this.lookComp = clamp(((f.lookDown ?? 0) - 0.35) / 0.4, 0, 1) * 0.15;
+      closed = f.blink >= this.cal.closeThr + this.lookComp;
       if (closed) { if (this.closedSince == null) this.closedSince = t; closedDur = t - this.closedSince; }
       else this.closedSince = null;
 
@@ -518,7 +592,18 @@ const Detector = {
     const w = video.videoWidth || 640, h = video.videoHeight || 480;
     const top = lm[10], chin = lm[152];
     const pitch = (Math.atan2((chin.z - top.z) * w, (chin.y - top.y) * h) * 180) / Math.PI;
-    return { face: true, blink: (blinkL + blinkR) / 2, blinkL, blinkR, jaw: get("jawOpen"), pitch, landmarks: lm };
+    // 아바타용: 좌우 회전(yaw, -1~1)과 기울기(roll, 도)
+    const nose = lm[1], cl = lm[234], cr = lm[454];
+    const yaw = clamp(((nose.x - (cl.x + cr.x) / 2) / Math.max(Math.abs(cr.x - cl.x), 1e-3)) * 2.2, -1, 1);
+    const e1 = lm[33], e2 = lm[263];
+    const roll = (Math.atan2((e2.y - e1.y) * h, (e2.x - e1.x) * w) * 180) / Math.PI;
+    return {
+      face: true, blink: (blinkL + blinkR) / 2, blinkL, blinkR, jaw: get("jawOpen"), pitch, landmarks: lm,
+      smile: (get("mouthSmileLeft") + get("mouthSmileRight")) / 2,
+      brow: get("browInnerUp"),
+      lookDown: (get("eyeLookDownLeft") + get("eyeLookDownRight")) / 2,
+      yaw, roll,
+    };
   },
 };
 
@@ -724,6 +809,7 @@ function stop() {
   $("recalBtn").disabled = true;
   $("pipBtn").disabled = true;
   setBadge("idle", "세션이 저장됐어요. 리포트에서 확인해 보세요.");
+  Room.sendLocal("idle", 0, null, true);
   updateGauge(0);
 }
 
@@ -791,13 +877,15 @@ function tick() {
 // 카메라 프레임 하나를 처리 (테스트에서는 이 함수에 가짜 값을 넣음)
 function processFrame(frame, t) {
   app.lastFrame = frame;
-  if (app.phase === "calibrating") { calibrationStep(frame, t); drawOverlay(frame, "calib"); updateDebug(frame, null); return; }
+  drawSelfAvatar(frame);
+  if (app.phase === "calibrating") { calibrationStep(frame, t); drawOverlay(frame, "calib"); updateDebug(frame, null); Room.sendLocal("calib", 0, frame); return; }
   if (app.phase !== "monitoring") return;
 
   const s = engine.update(frame, t);
   if (s.changed) onStateChange(s.state, s.prevState, s);
   recordFrame(s);
   renderSnapshot(s);
+  Room.sendLocal(s.state, s.score, frame);
   drawOverlay(frame, s.state);
   updateDebug(frame, s);
 }
@@ -863,7 +951,8 @@ function updateDebug(frame, s) {
   const f = (v, d = 2) => (v == null || Number.isNaN(v) ? "-" : Number(v).toFixed(d));
   el.textContent = [
     `얼굴 인식      ${frame.face ? "O" : "X"}     FPS ${app.fps}   타이머 ${app.ticker ? app.ticker.mode : "-"}   탭 ${document.hidden ? "숨김" : "보임"}${app.pip ? " / 미니창" : ""}`,
-    `눈 감김 L/R    ${f(frame.blinkL)} / ${f(frame.blinkR)}   평균 ${f(frame.blink)}   기준값 ${f(engine.cal.closeThr)}`,
+    `눈 감김 L/R    ${f(frame.blinkL)} / ${f(frame.blinkR)}   평균 ${f(frame.blink)}   기준값 ${f(engine.cal.closeThr)} + 시선보정 ${f(engine.lookComp)}`,
+    `시선 아래      ${f(frame.lookDown)}   미소 ${f(frame.smile)}   좌우 ${f(frame.yaw)}   기울기 ${f(frame.roll, 1)}°`,
     `입 벌림        ${f(frame.jaw)}   고개 각도 ${f(frame.pitch, 1)}°  (기준 ${f(engine.cal.pitchBase, 1)}°, 차이 ${s ? f(s.pitchDev, 1) : "-"}°)`,
     s ? `감김 지속      ${f(s.closedDur, 1)}초   PERCLOS ${f(s.perclos * 100, 1)}%   원점수 ${f(s.raw, 1)}   점수 ${f(s.score, 1)}` : "보정 중…",
     s ? `상태          ${s.state}` : "",
@@ -1114,6 +1203,488 @@ function renderHistory() {
 }
 
 /* =========================================================
+ * 2D 아바타 (직접 디자인한 캐릭터를 표정 값으로 움직임)
+ * p: { blink, jaw, smile, brow, yaw(-1~1), pitch(도, 기준 대비), roll(도) }
+ * ========================================================= */
+const LOOKS = [
+  { id: "choco", hair: "#4a2f22", skin: "#ffdcc0", eye: "#3a2618" },
+  { id: "mint",  hair: "#2fb59a", skin: "#ffe2cc", eye: "#1f5f52" },
+  { id: "berry", hair: "#d6457a", skin: "#ffe0cf", eye: "#6b1f3b" },
+  { id: "night", hair: "#34408f", skin: "#f9d6bd", eye: "#1e2560" },
+];
+const STATE_COLOR = { normal: "#2bb673", caution: "#f5c518", danger: "#ff7a2f", sleep: "#ff4d57", away: "#7d86a8", calib: "#5aa0ff", idle: "#4a5380" };
+
+function ell(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(rx, 0.1), Math.max(ry, 0.1), 0, 0, Math.PI * 2); }
+
+function drawAvatar(ctx, S, p, lookId, glasses, state, time) {
+  const L = LOOKS.find((l) => l.id === lookId) || LOOKS[0];
+  p = p || {};
+  const blink = clamp(p.blink ?? 0, 0, 1), jaw = clamp(p.jaw ?? 0, 0, 1), smile = clamp(p.smile ?? 0, 0, 1), brow = clamp(p.brow ?? 0, 0, 1);
+  const yaw = clamp(p.yaw ?? 0, -1, 1), pitch = clamp(p.pitch ?? 0, -30, 30), roll = clamp(p.roll ?? 0, -30, 30);
+
+  ctx.clearRect(0, 0, S, S);
+  ctx.save();
+  // 배경 원 + 상태 테두리
+  ctx.fillStyle = "#1e2750"; ell(ctx, S / 2, S / 2, S * 0.47, S * 0.47); ctx.fill();
+  ctx.lineWidth = S * 0.03; ctx.strokeStyle = STATE_COLOR[state] || STATE_COLOR.idle; ctx.stroke();
+  if (state === "away" || state === "idle") ctx.globalAlpha = 0.5;
+
+  // 머리 전체: 거울처럼 보이도록 좌우 반전된 방향으로 회전·이동
+  ctx.save();
+  ctx.translate(S / 2, S * 0.54);
+  ctx.rotate((-roll * Math.PI) / 180);
+  const sleepDrop = state === "sleep" ? S * 0.05 : 0;
+  const dx = -yaw * S * 0.09, dy = (pitch / 30) * S * 0.06 + sleepDrop;
+
+  ctx.fillStyle = L.hair; ell(ctx, dx * 0.2, -S * 0.04 + sleepDrop, S * 0.33, S * 0.34); ctx.fill(); // 뒷머리
+  ctx.fillStyle = L.skin; ell(ctx, dx * 0.3, sleepDrop, S * 0.27, S * 0.29); ctx.fill();             // 얼굴
+
+  // 앞머리
+  const bx = dx * 0.5, by = sleepDrop;
+  ctx.fillStyle = L.hair; ctx.beginPath();
+  ctx.moveTo(-S * 0.29 + bx, -S * 0.02 + by);
+  ctx.quadraticCurveTo(-S * 0.3 + bx, -S * 0.34 + by, bx, -S * 0.34 + by);
+  ctx.quadraticCurveTo(S * 0.3 + bx, -S * 0.34 + by, S * 0.29 + bx, -S * 0.02 + by);
+  [[0.2, -0.13], [0.12, -0.06], [0.04, -0.15], [-0.06, -0.07], [-0.14, -0.15], [-0.22, -0.06]]
+    .forEach(([x, y]) => ctx.lineTo(S * x + bx, S * y + by));
+  ctx.closePath(); ctx.fill();
+
+  // 눈
+  const eyeY = dy + S * 0.03, eyeDX = S * 0.105, ew = S * 0.055, eh = S * 0.07;
+  let open = 1 - blink;
+  if (state === "sleep") open = 0; else if (state === "caution") open = Math.min(open, 0.5);
+  for (const side of [-1, 1]) {
+    const ex = dx + side * eyeDX;
+    if (open < 0.2) {
+      ctx.strokeStyle = L.eye; ctx.lineWidth = S * 0.014; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(ex - ew, eyeY); ctx.quadraticCurveTo(ex, eyeY + S * 0.028, ex + ew, eyeY); ctx.stroke();
+    } else {
+      const oh = eh * open, px = ex - yaw * ew * 0.3;
+      ctx.fillStyle = "#fff"; ell(ctx, ex, eyeY, ew, oh); ctx.fill();
+      ctx.fillStyle = L.eye; ell(ctx, px, eyeY + oh * 0.1, ew * 0.62, oh * 0.82); ctx.fill();
+      ctx.fillStyle = "#fff"; ell(ctx, px + ew * 0.22, eyeY - oh * 0.3, S * 0.013, S * 0.013); ctx.fill();
+      ctx.strokeStyle = "#2a1d17"; ctx.lineWidth = S * 0.011;
+      ctx.beginPath(); ctx.ellipse(ex, eyeY, ew, oh, 0, Math.PI, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // 눈썹
+  ctx.strokeStyle = L.hair; ctx.lineWidth = S * 0.016; ctx.lineCap = "round";
+  for (const side of [-1, 1]) {
+    const bY = eyeY - eh - S * 0.03 - brow * S * 0.035;
+    ctx.beginPath();
+    ctx.moveTo(dx + side * (eyeDX + ew * 0.8), bY + S * 0.006);
+    ctx.lineTo(dx + side * (eyeDX - ew * 0.8), bY - brow * S * 0.012);
+    ctx.stroke();
+  }
+
+  // 볼터치
+  ctx.fillStyle = "rgba(255,120,140,0.35)";
+  for (const side of [-1, 1]) { ell(ctx, dx + side * S * 0.17, eyeY + S * 0.08, S * 0.042, S * 0.022); ctx.fill(); }
+
+  // 입
+  const my = dy + S * 0.155;
+  if (jaw > 0.12 && state !== "sleep") {
+    ctx.fillStyle = "#7a2733"; ell(ctx, dx, my, S * (0.035 + 0.02 * smile), S * (0.012 + 0.065 * jaw)); ctx.fill();
+  } else {
+    ctx.strokeStyle = "#7a2733"; ctx.lineWidth = S * 0.013; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(dx - S * 0.045, my); ctx.quadraticCurveTo(dx, my + S * (0.006 + 0.045 * smile), dx + S * 0.045, my); ctx.stroke();
+  }
+
+  // 안경
+  if (glasses) {
+    ctx.strokeStyle = "#1b1b24"; ctx.lineWidth = S * 0.011;
+    for (const side of [-1, 1]) { ell(ctx, dx + side * eyeDX, eyeY, S * 0.078, S * 0.07); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(dx - eyeDX + S * 0.078, eyeY); ctx.lineTo(dx + eyeDX - S * 0.078, eyeY); ctx.stroke();
+  }
+  ctx.restore();
+
+  // 상태 표현
+  ctx.globalAlpha = 1;
+  if (state === "sleep") {
+    ctx.fillStyle = "#cfd6ff"; ctx.font = `bold ${S * 0.11}px sans-serif`;
+    const k = (time / 900) % 1;
+    ctx.globalAlpha = 1 - k; ctx.fillText("Z", S * (0.7 + k * 0.08), S * (0.32 - k * 0.12));
+    ctx.globalAlpha = 1; ctx.font = `bold ${S * 0.08}px sans-serif`; ctx.fillText("z", S * 0.64, S * 0.36);
+  } else if (state === "danger") {
+    const bob = Math.sin(time / 180) * S * 0.01;
+    ctx.fillStyle = "#7fd3ff"; ctx.beginPath();
+    ctx.moveTo(S * 0.77, S * 0.27 + bob);
+    ctx.quadraticCurveTo(S * 0.82, S * 0.35 + bob, S * 0.77, S * 0.37 + bob);
+    ctx.quadraticCurveTo(S * 0.72, S * 0.35 + bob, S * 0.77, S * 0.27 + bob);
+    ctx.fill();
+  } else if (state === "caution") {
+    ctx.fillStyle = "#f5c518"; ctx.font = `bold ${S * 0.09}px sans-serif`; ctx.fillText("…", S * 0.7, S * 0.3);
+  } else if (state === "away") {
+    ctx.fillStyle = "#eef1fb"; ctx.font = `bold ${S * 0.075}px sans-serif`; ctx.textAlign = "center";
+    ctx.fillText("자리 비움", S / 2, S * 0.9);
+  }
+  ctx.restore();
+}
+
+// 표정 값을 부드럽게 따라가도록 보간
+function lerpFace(cur, target, k = 0.35) {
+  const out = { ...cur };
+  for (const key of ["blink", "jaw", "smile", "brow", "yaw", "pitch", "roll"]) {
+    const a = cur[key] ?? 0, b = target ? target[key] ?? 0 : 0;
+    out[key] = a + (b - a) * k;
+  }
+  return out;
+}
+
+// 내 프레임 → 아바타용 값 (고개 각도는 보정값 기준 상대값)
+function faceToAvatar(frame) {
+  if (!frame || !frame.face) return null;
+  return {
+    blink: frame.blink, jaw: frame.jaw, smile: frame.smile ?? 0, brow: frame.brow ?? 0,
+    yaw: frame.yaw ?? 0, pitch: (frame.pitch ?? 0) - (engine.cal.pitchBase ?? 0), roll: frame.roll ?? 0,
+  };
+}
+const packFace = (a) => a && [a.blink, a.jaw, a.smile, a.brow, a.yaw, a.pitch, a.roll].map((v, i) => +v.toFixed(i >= 5 ? 1 : 2));
+const unpackFace = (arr) => Array.isArray(arr) && arr.length === 7
+  ? { blink: +arr[0] || 0, jaw: +arr[1] || 0, smile: +arr[2] || 0, brow: +arr[3] || 0, yaw: +arr[4] || 0, pitch: +arr[5] || 0, roll: +arr[6] || 0 }
+  : null;
+
+let selfFace = {};
+function drawSelfAvatar(frame) {
+  const target = faceToAvatar(frame);
+  if (target) selfFace = lerpFace(selfFace, target, 0.5);
+  const cv = $("avatarCam");
+  if (!$("monitor").classList.contains("avatar-view") || cv.ownerDocument.hidden) return;
+  const st = app.phase === "calibrating" ? "calib" : app.phase === "monitoring" ? engine.state : "idle";
+  drawAvatar(cv.getContext("2d"), cv.width, selfFace, store.get("look", "choco"), store.get("glasses", false), frame && frame.face ? st : (st === "sleep" ? "sleep" : "away"), performance.now());
+}
+
+/* =========================================================
+ * 스터디룸 — 친구들과 상태 공유
+ * FIREBASE_CONFIG가 없으면 같은 브라우저 탭끼리만 연결되는 체험 모드
+ * ========================================================= */
+
+function makeLocalBackend() {
+  const uid = "local-" + Math.random().toString(36).slice(2, 10);
+  let ch = null, members = {}, me = null, timers = [], h = null, onHide = null;
+  const send = (m) => ch && ch.postMessage(m);
+  return {
+    mode: "local", uid,
+    async join(code, data, handlers) {
+      h = handlers; me = { ...data, at: Date.now() };
+      ch = new BroadcastChannel("kkubeok-room-" + code);
+      ch.onmessage = ({ data: m }) => {
+        if (m.type === "member") {
+          const isNew = !members[m.uid];
+          members[m.uid] = { ...m.data, _seen: Date.now() };
+          isNew ? h.added(m.uid, m.data) : h.changed(m.uid, m.data);
+          if (m.hello) send({ type: "member", uid, data: me });
+        } else if (m.type === "leave" && members[m.uid]) { delete members[m.uid]; h.removed(m.uid); }
+        else if (m.type === "poke" && m.target === uid) h.poke(m.data);
+      };
+      h.added(uid, me);
+      send({ type: "member", uid, data: me, hello: true });
+      timers.push(setInterval(() => send({ type: "member", uid, data: me }), 2000));
+      timers.push(setInterval(() => {
+        const now = Date.now();
+        for (const [k, v] of Object.entries(members)) if (now - v._seen > 7000) { delete members[k]; h.removed(k); }
+      }, 2000));
+      onHide = () => send({ type: "leave", uid });
+      window.addEventListener("pagehide", onHide);
+    },
+    update(partial) { me = { ...me, ...partial, at: Date.now() }; send({ type: "member", uid, data: me }); h && h.changed(uid, me); },
+    poke(target, data) { send({ type: "poke", target, data: { ...data, fromUid: uid, at: Date.now() } }); },
+    async leave() {
+      send({ type: "leave", uid });
+      timers.forEach(clearInterval); timers = [];
+      if (onHide) window.removeEventListener("pagehide", onHide);
+      if (ch) ch.close(); ch = null; members = {};
+    },
+  };
+}
+
+let firebaseCache = null;
+async function makeFirebaseBackend(cfg) {
+  if (!firebaseCache) {
+    const base = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+    const [appMod, A, D] = await Promise.all([import(`${base}/firebase-app.js`), import(`${base}/firebase-auth.js`), import(`${base}/firebase-database.js`)]);
+    const fbApp = appMod.initializeApp(cfg);
+    const cred = await A.signInAnonymously(A.getAuth(fbApp)); // 익명 로그인: 가입 없이 고유 ID 발급
+    firebaseCache = { D, db: D.getDatabase(fbApp), uid: cred.user.uid };
+  }
+  const { D, db, uid } = firebaseCache;
+  let unsubs = [], meRef = null, code = null;
+  return {
+    mode: "firebase", uid,
+    async join(c, data, h) {
+      code = c;
+      const membersRef = D.ref(db, `rooms/${c}/members`);
+      const snap = await D.get(membersRef);
+      const cur = snap.val() || {};
+      if (Object.keys(cur).length >= ROOM_MAX && !cur[uid]) throw new Error(`방이 가득 찼어요 (최대 ${ROOM_MAX}명)`);
+      meRef = D.ref(db, `rooms/${c}/members/${uid}`);
+      await D.onDisconnect(meRef).remove(); // 창을 닫거나 연결이 끊기면 자동으로 방에서 나감
+      await D.set(meRef, { ...data, at: Date.now() });
+      unsubs.push(D.onChildAdded(membersRef, (s) => h.added(s.key, s.val())));
+      unsubs.push(D.onChildChanged(membersRef, (s) => h.changed(s.key, s.val())));
+      unsubs.push(D.onChildRemoved(membersRef, (s) => h.removed(s.key)));
+      unsubs.push(D.onChildAdded(D.ref(db, `rooms/${c}/pokes/${uid}`), (s) => { h.poke(s.val()); D.remove(s.ref).catch(() => {}); }));
+    },
+    update(partial) { if (meRef) D.update(meRef, { ...partial, at: Date.now() }).catch(() => {}); },
+    poke(target, data) {
+      D.push(D.ref(db, `rooms/${code}/pokes/${target}`), { ...data, fromUid: uid, at: Date.now() })
+        .catch((e) => toast("깨우기를 보내지 못했어요: " + e.message));
+    },
+    async leave() {
+      unsubs.forEach((u) => u()); unsubs = [];
+      if (meRef) { await D.onDisconnect(meRef).cancel().catch(() => {}); await D.remove(meRef).catch(() => {}); }
+      meRef = null;
+    },
+  };
+}
+
+const ROOM_STATE_TEXT = { normal: "집중 중", caution: "졸음 주의", danger: "졸고 있음!", sleep: "잠들었어요", away: "자리 비움", calib: "보정 중", idle: "대기 중" };
+
+const Room = {
+  backend: null, code: null, members: {}, faces: {}, prevStates: {}, lastSend: 0, lastState: null, pokeAt: {},
+
+  profile() {
+    return { name: ($("nickname").value.trim() || "익명").slice(0, 12), look: store.get("look", "choco"), glasses: !!store.get("glasses", false) };
+  },
+
+  async join(code) {
+    code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (code.length !== 6) { toast("방 코드 6자리를 확인해 주세요"); return; }
+    if (!$("nickname").value.trim()) { $("nickname").focus(); toast("닉네임을 먼저 정해 주세요"); return; }
+    store.set("nickname", $("nickname").value.trim());
+    Alarm.ensure(); // 클릭 순간에 오디오를 켜 둬야 친구가 깨울 때 소리가 남
+    if (this.backend) await this.leave();
+    $("createRoom").disabled = $("joinRoom").disabled = true;
+    try {
+      this.backend = FIREBASE_CONFIG ? await makeFirebaseBackend(FIREBASE_CONFIG) : makeLocalBackend();
+      const st = app.phase === "monitoring" ? engine.state : app.phase === "calibrating" ? "calib" : "idle";
+      await this.backend.join(code, { ...this.profile(), state: st, score: 0, f: null, study: this.studySec() }, {
+        added: (uid, d) => this.onMember(uid, d, true),
+        changed: (uid, d) => this.onMember(uid, d, false),
+        removed: (uid) => this.onRemoved(uid),
+        poke: (d) => this.onPoked(d),
+      });
+    } catch (e) {
+      console.error(e);
+      toast("방에 들어가지 못했어요: " + (e.message || e));
+      this.backend = null;
+      $("createRoom").disabled = $("joinRoom").disabled = false;
+      return;
+    }
+    $("createRoom").disabled = $("joinRoom").disabled = false;
+    this.code = code;
+    history.replaceState(null, "", "#room=" + code);
+    $("roomCodeText").textContent = code;
+    $("roomLobby").hidden = true;
+    $("roomView").hidden = false;
+    this.updateHint();
+    toast(`${code} 방에 들어왔어요`);
+  },
+
+  async leave() {
+    if (!this.backend) return;
+    await this.backend.leave();
+    this.backend = null; this.code = null; this.members = {}; this.faces = {}; this.prevStates = {};
+    $("members").innerHTML = "";
+    $("roomLobby").hidden = false;
+    $("roomView").hidden = true;
+    history.replaceState(null, "", location.pathname + location.search);
+  },
+
+  studySec() { return Math.round(app.session ? app.session.monitoredSec : 0); },
+
+  // 감지 결과를 방에 전송 (상태가 바뀌면 즉시, 아니면 약 3회/초)
+  sendLocal(state, score, frame, force = false) {
+    if (!this.backend || !this.code) return;
+    const now = performance.now();
+    if (!force && state === this.lastState && now - this.lastSend < 300) return;
+    this.lastSend = now; this.lastState = state;
+    this.backend.update({ state, score: Math.round(score), f: packFace(faceToAvatar(frame)) || null, study: this.studySec() });
+  },
+
+  onMember(uid, d, isNew) {
+    if (!d) return;
+    const isMe = this.backend && uid === this.backend.uid;
+    const prev = this.prevStates[uid];
+    this.members[uid] = d;
+    this.prevStates[uid] = d.state;
+    if (isNew || !document.querySelector(`[data-uid="${CSS.escape(uid)}"]`)) this.createCard(uid, isMe);
+    this.updateCard(uid);
+    const name = String(d.name || "익명").slice(0, 12);
+    if (!isMe && prev !== undefined && prev !== "sleep" && d.state === "sleep") {
+      toast(`😴 ${name}님이 잠들었어요! 깨워 주세요`);
+      Alarm.chime();
+      notify(`${name}님이 잠들었어요! 깨워 주세요`);
+    }
+    if (!isMe && isNew && prev === undefined && this.code) toast(`${name}님이 들어왔어요`);
+  },
+
+  onRemoved(uid) {
+    const el = document.querySelector(`[data-uid="${CSS.escape(uid)}"]`);
+    if (el) el.remove();
+    const d = this.members[uid];
+    if (d && (!this.backend || uid !== this.backend.uid)) toast(`${String(d.name || "익명").slice(0, 12)}님이 나갔어요`);
+    delete this.members[uid]; delete this.faces[uid]; delete this.prevStates[uid];
+  },
+
+  onPoked(d) {
+    if (!d || Date.now() - (d.at || 0) > 60000) return; // 오래된 깨우기는 무시
+    const from = String(d.from || "친구").slice(0, 12);
+    toast(`⏰ ${from}님이 깨웠어요!`);
+    notify(`${from}님이 깨웠어요!`);
+    document.body.classList.remove("poked"); void document.body.offsetWidth; document.body.classList.add("poked");
+    if (!["danger", "sleep"].includes(engine.state)) {
+      Alarm.startLoop("danger");
+      setTimeout(() => { if (!["danger", "sleep"].includes(engine.state)) Alarm.stopLoop(); }, 2000);
+    }
+  },
+
+  poke(uid) {
+    const last = this.pokeAt[uid] || 0;
+    if (Date.now() - last < 5000) { toast("잠시 후 다시 깨울 수 있어요"); return; }
+    this.pokeAt[uid] = Date.now();
+    this.backend.poke(uid, { from: this.profile().name });
+    toast(`${String(this.members[uid].name || "친구").slice(0, 12)}님을 깨웠어요!`);
+  },
+
+  createCard(uid, isMe) {
+    const card = document.createElement("div");
+    card.className = "member" + (isMe ? " me" : "");
+    card.dataset.uid = uid;
+    const cv = document.createElement("canvas"); cv.width = 220; cv.height = 220;
+    const name = document.createElement("div"); name.className = "mname";
+    const st = document.createElement("div"); st.className = "mstate";
+    const tm = document.createElement("div"); tm.className = "mtime";
+    card.append(cv, name, st, tm);
+    if (!isMe) {
+      const btn = document.createElement("button");
+      btn.textContent = "⏰ 깨우기";
+      btn.onclick = () => this.poke(uid);
+      card.append(btn);
+    }
+    isMe ? $("members").prepend(card) : $("members").append(card);
+  },
+
+  updateCard(uid) {
+    const card = document.querySelector(`[data-uid="${CSS.escape(uid)}"]`);
+    const d = this.members[uid];
+    if (!card || !d) return;
+    const isMe = this.backend && uid === this.backend.uid;
+    const state = ROOM_STATE_TEXT[d.state] ? d.state : "idle";
+    card.className = "member" + (isMe ? " me" : "") + " st-" + state;
+    card.querySelector(".mname").textContent = String(d.name || "익명").slice(0, 12) + (isMe ? " (나)" : "");
+    const stEl = card.querySelector(".mstate");
+    stEl.textContent = ROOM_STATE_TEXT[state];
+    stEl.style.color = STATE_COLOR[state];
+    const mins = Math.floor((+d.study || 0) / 60);
+    card.querySelector(".mtime").textContent = `공부 ${mins >= 60 ? Math.floor(mins / 60) + "시간 " : ""}${mins % 60}분`;
+    const btn = card.querySelector("button");
+    if (btn) btn.classList.toggle("danger-btn", state === "sleep" || state === "danger");
+  },
+
+  // 아바타 애니메이션 (메인 창이 보일 때만)
+  render(t) {
+    if (this.code && !document.hidden) {
+      for (const [uid, d] of Object.entries(this.members)) {
+        const card = document.querySelector(`[data-uid="${CSS.escape(uid)}"]`);
+        if (!card) continue;
+        const isMe = this.backend && uid === this.backend.uid;
+        const target = isMe ? (app.lastFrame && app.lastFrame.face ? faceToAvatar(app.lastFrame) : null) : unpackFace(d.f);
+        this.faces[uid] = lerpFace(this.faces[uid] || {}, target, 0.25);
+        const look = LOOKS.some((l) => l.id === d.look) ? d.look : "choco";
+        const cv = card.querySelector("canvas");
+        drawAvatar(cv.getContext("2d"), cv.width, this.faces[uid], look, !!d.glasses, ROOM_STATE_TEXT[d.state] ? d.state : "idle", t);
+      }
+    }
+    requestAnimationFrame((tt) => this.render(tt));
+  },
+
+  updateHint() {
+    $("roomHint").textContent = app.running ? "내 상태가 친구들에게 실시간으로 보이고 있어요." : "왼쪽에서 ‘시작하기’를 누르면 친구들에게 내 상태가 보여요.";
+  },
+};
+
+function makeRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I 제외
+  let c = ""; const r = crypto.getRandomValues(new Uint32Array(6));
+  for (const v of r) c += chars[v % chars.length];
+  return c;
+}
+
+function initRoomUI() {
+  $("roomModeMsg").innerHTML = FIREBASE_CONFIG
+    ? "방을 만들고 초대 링크를 보내면 친구들과 같이 공부할 수 있어요."
+    : "<b>체험 모드</b>: 지금은 같은 브라우저의 다른 탭끼리만 연결돼요. Firebase 설정을 넣으면 친구들과 연결됩니다.";
+
+  // 닉네임·외형
+  $("nickname").value = store.get("nickname", "");
+  $("nickname").oninput = (e) => store.set("nickname", e.target.value.trim());
+  $("glasses").checked = !!store.get("glasses", false);
+  $("glasses").onchange = (e) => { store.set("glasses", e.target.checked); pushProfile(); };
+  const picker = $("lookPicker");
+  LOOKS.forEach((l) => {
+    const b = document.createElement("button");
+    b.className = "swatch" + (store.get("look", "choco") === l.id ? " on" : "");
+    b.style.background = `radial-gradient(circle at 50% 65%, ${l.skin} 0 38%, ${l.hair} 40%)`;
+    b.title = "아바타 색";
+    b.onclick = () => {
+      store.set("look", l.id);
+      picker.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x === b));
+      pushProfile();
+    };
+    picker.append(b);
+  });
+  function pushProfile() { if (Room.backend) Room.backend.update(Room.profile()); }
+
+  // 미리보기 아바타: 가끔 눈을 깜빡이며 웃는 모습
+  const pv = $("avatarPreview");
+  (function preview(t) {
+    if (!$("roomLobby").hidden && !document.hidden) {
+      const blink = (t % 3200) < 140 ? 1 : 0;
+      drawAvatar(pv.getContext("2d"), pv.width, { blink, smile: 0.6, yaw: Math.sin(t / 1500) * 0.3, roll: Math.sin(t / 2100) * 4 }, store.get("look", "choco"), $("glasses").checked, "normal", t);
+    }
+    requestAnimationFrame(preview);
+  })(0);
+
+  $("createRoom").onclick = () => Room.join(makeRoomCode());
+  $("joinRoom").onclick = () => Room.join($("roomCode").value);
+  $("roomCode").addEventListener("keydown", (e) => e.key === "Enter" && Room.join($("roomCode").value));
+  $("leaveRoom").onclick = () => Room.leave().then(() => toast("방에서 나왔어요"));
+  $("copyLink").onclick = async () => {
+    const url = location.origin + location.pathname + "#room=" + Room.code;
+    try { await navigator.clipboard.writeText(url); toast("초대 링크를 복사했어요"); }
+    catch { prompt("이 링크를 친구에게 보내세요", url); }
+  };
+
+  // 아바타로 보기 전환
+  const applyView = (on) => {
+    $("monitor").classList.toggle("avatar-view", on);
+    $("viewBtn").textContent = on ? "카메라로 보기" : "아바타로 보기";
+    if (on) drawSelfAvatar(app.lastFrame);
+  };
+  applyView(store.get("avatarView", false));
+  $("viewBtn").onclick = () => { const on = !$("monitor").classList.contains("avatar-view"); store.set("avatarView", on); applyView(on); };
+
+  // 초대 링크로 들어온 경우
+  const readInvite = () => {
+    const m = location.hash.match(/room=([A-Za-z0-9]{6})/);
+    if (!m || (Room.code && Room.code === m[1].toUpperCase())) return;
+    $("roomCode").value = m[1].toUpperCase();
+    document.querySelector('.tabs button[data-tab="tabRoom"]').click();
+    toast("초대받은 방이에요. 닉네임을 정하고 ‘입장’을 눌러 주세요");
+  };
+  readInvite();
+  window.addEventListener("hashchange", readInvite);
+
+  // 시작/정지에 맞춰 안내 문구 갱신
+  $("startBtn").addEventListener("click", () => setTimeout(() => Room.updateHint(), 500));
+  $("stopBtn").addEventListener("click", () => setTimeout(() => Room.updateHint(), 100));
+
+  requestAnimationFrame((t) => Room.render(t));
+}
+
+/* =========================================================
  * 이벤트 연결
  * ========================================================= */
 function initUI() {
@@ -1171,9 +1742,10 @@ function initUI() {
 }
 
 initUI();
+initRoomUI();
 
 // 테스트·시연용 훅: 카메라 없이 가짜 프레임을 넣어 동작을 확인할 수 있음
-window.kkubeok = { engine, app, Detector, processFrame, beginMonitoring, computeCalibration, parseYouTubeId, wake };
+window.kkubeok = { engine, app, Detector, Room, drawAvatar, processFrame, beginMonitoring, computeCalibration, parseYouTubeId, wake };
 </script>
 </body>
 </html>
